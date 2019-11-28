@@ -6,6 +6,13 @@
 	width: 90%;
 	margin: 20px auto;
 }
+
+@media screen and (max-width: 800px) {
+	.wrapper {
+		width: 99%;
+	}
+}
+
 .file-lists .header {
 	background: rgb(245, 249, 252);
 	height: 40px;

@@ -12,7 +12,6 @@
 	overflow: hidden;
 	color: #666;
 	border-bottom: 1px solid #d5e7f3;
-
 }
 .file-item:hover {
 	background: rgb(245, 249, 252);
@@ -28,14 +27,14 @@
 
 .file-item .name {
 	width: 60%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .file-item .size {
 	width: 10%;
 }
-
-
-
 </style>
 <template>
 	<div class="file-item">
