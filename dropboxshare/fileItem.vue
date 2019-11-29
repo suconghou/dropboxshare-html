@@ -1,5 +1,5 @@
 <style>
-.file-item .icon,
+.file-item .typeicon,
 .file-item .name,
 .file-item .date,
 .file-item .size {
@@ -10,25 +10,35 @@
 	line-height: 50px;
 	font-size: 16px;
 	cursor: pointer;
-	overflow: hidden;
 	color: #666;
 	border-bottom: 1px solid #d5e7f3;
+}
+.file-item::before,
+.file-item::after {
+	content: " ";
+	overflow: hidden;
 }
 .file-item:hover {
 	background: rgb(245, 249, 252);
 }
-.file-item:hover .ctrl {
-	display: block;
+
+@media screen and (min-width: 800px) {
+	.file-item:hover .ctrl {
+		display: block;
+	}
 }
 
-.file-item .icon {
+.file-item .typeicon {
 	width: 30px;
 	height: 30px;
-	margin-top: 5px;
+	margin-top: 9px;
 	margin-left: 5px;
 	margin-right: 20px;
 }
-
+.typeicon .icon {
+	width: 30px;
+	height: 30px;
+}
 .file-item .name {
 	width: 55%;
 	overflow: hidden;
@@ -38,20 +48,48 @@
 
 .file-item .size {
 	width: 10%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .file-item .date {
 	width: 15%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .file-item .ctrl {
 	float: right;
 	width: 70px;
 	font-size: 14px;
 	display: none;
+	position: relative;
+}
+
+.file-item .qrcode:hover .icon {
+	fill: #222;
+}
+.file-item .qrcode .icon {
+	width: 30px;
+	height: 30px;
+	margin-top: 10px;
+	fill: #aaa;
+}
+
+.qrcodeimg {
+	position: absolute;
+	left: -37px;
+	top: -100px;
+	width: 100px;
+	height: 100px;
+	box-shadow: 0 0 5px rgba(100, 100, 100, 0.5);
+	background: #fff;
+	z-index: 99;
 }
 </style>
 <template>
 	<div class="file-item">
-		<div class="icon" v-if="item.isdir">
+		<div class="typeicon" v-if="item.isdir">
 			<svg
 				t="1574941112104"
 				class="icon"
@@ -73,7 +111,7 @@
 			</svg>
 		</div>
 		<template v-else>
-			<div class="icon" v-if="image">
+			<div class="typeicon" v-if="image">
 				<svg
 					t="1574941260911"
 					class="icon"
@@ -94,7 +132,7 @@
 					/>
 				</svg>
 			</div>
-			<div class="icon" v-else-if="tar">
+			<div class="typeicon" v-else-if="tar">
 				<svg
 					t="1574941527122"
 					class="icon"
@@ -111,7 +149,7 @@
 					/>
 				</svg>
 			</div>
-			<div class="icon" v-else-if="doc">
+			<div class="typeicon" v-else-if="doc">
 				<svg
 					t="1574941280914"
 					class="icon"
@@ -134,7 +172,7 @@
 					/>
 				</svg>
 			</div>
-			<div class="icon" v-else-if="media">
+			<div class="typeicon" v-else-if="media">
 				<svg
 					t="1574941302252"
 					class="icon"
@@ -157,7 +195,7 @@
 					/>
 				</svg>
 			</div>
-			<div class="icon" v-else>
+			<div class="typeicon" v-else>
 				<svg
 					t="1574941328714"
 					class="icon"
@@ -179,7 +217,29 @@
 		<div class="size" v-show="!item.isdir">{{item.size | format}}</div>
 		<div class="date" v-show="!item.isdir">{{item.mtime | date}}</div>
 		<div class="ctrl" v-if="!item.isdir">
-			<span @click.stop="copy(item)">复制地址</span>
+			<div class="qrcodeimg" :name="item.name" v-show="qrshow.path==item.path"></div>
+			<div
+				class="qrcode"
+				@click.stop="copy(item)"
+				@mouseenter="showQr(item)"
+				@mouseleave="hideQr(item)"
+			>
+				<svg
+					t="1574991047098"
+					class="icon"
+					viewBox="0 0 1024 1024"
+					version="1.1"
+					xmlns="http://www.w3.org/2000/svg"
+					p-id="1890"
+					width="256"
+					height="256"
+				>
+					<path
+						d="M682.666667 725.333333v-42.666666h-128v-128h128v85.333333h85.333333v85.333333h-42.666667v85.333334h-85.333333v85.333333h-85.333333v-128h85.333333v-42.666667h42.666667z m213.333333 170.666667h-170.666667v-85.333333h85.333334v-85.333334h85.333333v170.666667zM128 128h341.333333v341.333333H128V128z m85.333333 85.333333v170.666667h170.666667V213.333333H213.333333z m341.333334-85.333333h341.333333v341.333333h-341.333333V128z m85.333333 85.333333v170.666667h170.666667V213.333333h-170.666667zM128 554.666667h341.333333v341.333333H128v-341.333333z m85.333333 85.333333v170.666667h170.666667v-170.666667H213.333333z m554.666667-85.333333h128v85.333333h-128v-85.333333zM256 256h85.333333v85.333333H256V256z m0 426.666667h85.333333v85.333333H256v-85.333333zM682.666667 256h85.333333v85.333333h-85.333333V256z"
+						p-id="1891"
+					/>
+				</svg>
+			</div>
 		</div>
 	</div>
 </template>
@@ -194,7 +254,9 @@ export default {
 		}
 	},
 	data() {
-		return {};
+		return {
+			qrshow: {}
+		};
 	},
 	computed: {
 		ext() {
@@ -237,6 +299,29 @@ export default {
 	methods: {
 		copy(item) {
 			console.info(item);
+		},
+		showQr(item) {
+			this.qrshow = item;
+			const url = location.origin + item.path;
+			console.info(url);
+			const el = document.querySelector(
+				`.qrcodeimg[name='${item.name}']`
+			);
+			/* global QRCode:false */
+
+			if (!el.qrcode) {
+				el.qrcode = new QRCode(el, {
+					text: url,
+					width: 100,
+					height: 100
+				});
+			} else {
+				el.qrcode.clear(); // clear the code.
+				el.qrcode.makeCode(url); // make another code.
+			}
+		},
+		hideQr() {
+			this.qrshow = {};
 		}
 	}
 };

@@ -58,3 +58,16 @@ export const dateFormat = (date, fmt = 'YYYY-MM-DD HH:mm:ss') => {
     }
     return fmt;
 };
+
+
+
+export const loadScript = src => {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+};

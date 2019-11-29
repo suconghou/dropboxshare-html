@@ -26,7 +26,7 @@
 .nav-bar .nav {
 	display: block;
 	margin: 0;
-	padding: 0;
+	padding: 5px 0 10px 0;
 	height: 30px;
 	color: rgb(77, 164, 230);
 }
@@ -115,7 +115,7 @@
 		</div>
 		<div class="file-lists">
 			<div class="file-item header">
-				<div class="icon"></div>
+				<div class="typeicon"></div>
 				<div class="name">文件 ({{totalSizeHuman}} 共{{list.total}}个)</div>
 				<div class="size">大小</div>
 				<div class="date">修改时间</div>
@@ -128,7 +128,13 @@
 import fileItem from "./fileItem";
 import { getList } from "./request";
 
-import { byteFormat } from "./util";
+import { byteFormat, loadScript } from "./util";
+
+loadScript(
+	"https://rawcdn.githack.com/davidshimjs/qrcodejs/04f46c6a0708418cb7b96fc563eacae0fbf77674/qrcode.min.js"
+).then(res => {
+	document.head.removeChild(res.currentTarget)
+});
 
 export default {
 	data() {
