@@ -118,6 +118,7 @@
 				<div class="icon"></div>
 				<div class="name">文件 ({{totalSizeHuman}} 共{{list.total}}个)</div>
 				<div class="size">大小</div>
+				<div class="date">修改时间</div>
 			</div>
 			<file-item v-for="item in list.list" :key="item.path" :item="item" @click.native="goto(item)" />
 		</div>

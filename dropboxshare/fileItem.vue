@@ -1,6 +1,7 @@
 <style>
 .file-item .icon,
 .file-item .name,
+.file-item .date,
 .file-item .size {
 	float: left;
 }
@@ -16,6 +17,9 @@
 .file-item:hover {
 	background: rgb(245, 249, 252);
 }
+.file-item:hover .ctrl {
+	display: block;
+}
 
 .file-item .icon {
 	width: 30px;
@@ -26,7 +30,7 @@
 }
 
 .file-item .name {
-	width: 60%;
+	width: 55%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -34,6 +38,15 @@
 
 .file-item .size {
 	width: 10%;
+}
+.file-item .date {
+	width: 15%;
+}
+.file-item .ctrl {
+	float: right;
+	width: 70px;
+	font-size: 14px;
+	display: none;
 }
 </style>
 <template>
@@ -163,11 +176,15 @@
 			</div>
 		</template>
 		<div class="name">{{item.name}}</div>
-		<div class="size">{{item.size | format}}</div>
+		<div class="size" v-show="!item.isdir">{{item.size | format}}</div>
+		<div class="date" v-show="!item.isdir">{{item.mtime | date}}</div>
+		<div class="ctrl" v-if="!item.isdir">
+			<span @click.stop="copy(item)">复制地址</span>
+		</div>
 	</div>
 </template>
 <script>
-import { byteFormat } from "./util";
+import { byteFormat, dateFormat } from "./util";
 
 export default {
 	props: {
@@ -210,6 +227,16 @@ export default {
 	filters: {
 		format(s) {
 			return byteFormat(s);
+		},
+		date(s) {
+			if (s > 0) {
+				return dateFormat(s * 1e3, "YYYY/MM/DD HH:mm:ss");
+			}
+		}
+	},
+	methods: {
+		copy(item) {
+			console.info(item);
 		}
 	}
 };
