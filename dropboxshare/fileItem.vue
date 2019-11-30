@@ -244,7 +244,7 @@
 	</div>
 </template>
 <script>
-import { byteFormat, dateFormat } from "./util";
+import { byteFormat, dateFormat, copyText } from "./util";
 
 export default {
 	props: {
@@ -299,6 +299,8 @@ export default {
 	methods: {
 		copy(item) {
 			console.info(item);
+			const url = location.origin + item.path;
+			copyText(url);
 		},
 		showQr(item) {
 			this.qrshow = item;

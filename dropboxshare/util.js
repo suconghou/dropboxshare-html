@@ -71,3 +71,20 @@ export const loadScript = src => {
         document.head.appendChild(script);
     });
 };
+
+
+export const copyText = text => {
+    const dom = document.createElement('input');
+    dom.value = text;
+    // 不能设置宽高为0或者display:none,此方案已测试Chrome,Safari,Firefox有效
+    dom.style.left = '-999px'
+    dom.style.top = '-999px'
+    dom.style.opacity = 0;
+    dom.style.position = 'fixed'
+    document.body.appendChild(dom);
+    dom.select(); // 选择对象
+    document.execCommand('Copy'); // 执行浏览器复制命令
+    setTimeout(() => {
+        document.body.removeChild(dom);
+    }, 200);
+}
