@@ -108,6 +108,7 @@
 				<span></span>
 			</div>
 		</div>
+		<toast ref="toast" />
 		<div class="nav-bar">
 			<ul class="nav">
 				<li v-for="(nav,i) in navs" :key="i" v-text="nav.name" @click="navto(nav.target)"></li>
@@ -125,6 +126,7 @@
 	</div>
 </template>
 <script>
+import toast from "./toast";
 import fileItem from "./fileItem";
 import { getList } from "./request";
 
@@ -133,7 +135,7 @@ import { byteFormat, loadScript } from "./util";
 loadScript(
 	"https://rawcdn.githack.com/davidshimjs/qrcodejs/04f46c6a0708418cb7b96fc563eacae0fbf77674/qrcode.min.js"
 ).then(res => {
-	document.head.removeChild(res.currentTarget)
+	document.head.removeChild(res.currentTarget);
 });
 
 export default {
@@ -148,7 +150,8 @@ export default {
 		};
 	},
 	components: {
-		fileItem
+		fileItem,
+		toast
 	},
 	computed: {
 		totalSize() {
@@ -192,6 +195,9 @@ export default {
 	},
 
 	methods: {
+		toast(text) {
+			this.$refs.toast.success(text);
+		},
 		hashChange() {
 			const hash = location.hash;
 			this.load(hash.substring(1));

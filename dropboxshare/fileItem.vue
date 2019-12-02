@@ -298,9 +298,9 @@ export default {
 	},
 	methods: {
 		copy(item) {
-			console.info(item);
 			const url = location.origin + item.path;
 			copyText(url);
+			this.$parent.toast("复制完成");
 		},
 		showQr(item) {
 			this.qrshow = item;
