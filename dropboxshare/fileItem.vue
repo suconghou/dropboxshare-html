@@ -272,7 +272,7 @@ export default {
 			return ["mp3", "mp4", "flv", "mkv"].includes(this.ext);
 		},
 		tar() {
-			return ["rar", "zip", "xz", "gz","7z"].includes(this.ext);
+			return ["rar", "zip", "xz", "gz","7z","bz2"].includes(this.ext);
 		},
 		doc() {
 			return [
