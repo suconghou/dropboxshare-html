@@ -21,7 +21,7 @@
 	background-color: #ebfaef;
 }
 
-.warp.error {
+.wrap.error {
 	color: #f4282d;
 	border-color: #f4282d;
 	background-color: #f8ecec;

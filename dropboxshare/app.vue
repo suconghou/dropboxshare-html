@@ -203,11 +203,16 @@ export default {
 			this.load(hash.substring(1));
 		},
 		async load(path) {
-			this.loading = true;
-			const data = await getList(path);
-			this.list = data;
-			this.path = path;
-			this.loading = false;
+			try {
+				this.loading = true;
+				const data = await getList(path);
+				this.list = data;
+				this.path = path;
+				this.loading = false;
+			} catch (e) {
+				this.loading = false;
+				this.$refs.toast.error(e.message);
+			}
 		},
 		goto(item) {
 			if (item.isdir) {

@@ -316,6 +316,7 @@ export default {
 
 			if (!el.qrcode) {
 				el.qrcode = new QRCode(el, {
+					correctLevel: QRCode.CorrectLevel.L,
 					text: url,
 					width: 100,
 					height: 100
