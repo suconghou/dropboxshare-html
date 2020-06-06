@@ -133,7 +133,7 @@ import { getList } from "./request";
 import { byteFormat, loadScript } from "./util";
 
 loadScript(
-	"https://rawcdn.githack.com/davidshimjs/qrcodejs/04f46c6a0708418cb7b96fc563eacae0fbf77674/qrcode.min.js"
+	"https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"
 ).then(res => {
 	document.head.removeChild(res.currentTarget);
 });
