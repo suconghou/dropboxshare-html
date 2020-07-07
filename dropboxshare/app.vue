@@ -130,13 +130,7 @@ import toast from "./toast";
 import fileItem from "./fileItem";
 import { getList } from "./request";
 
-import { byteFormat, loadScript } from "./util";
-
-loadScript(
-	"https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"
-).then(res => {
-	document.head.removeChild(res.currentTarget);
-});
+import { byteFormat } from "./util";
 
 export default {
 	data() {
