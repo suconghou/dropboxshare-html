@@ -220,6 +220,7 @@
 			<div class="qrcodeimg" :name="item.name" v-show="qrshow.path==item.path"></div>
 			<div
 				class="qrcode"
+				title="点击复制地址"
 				@click.stop="copy(item)"
 				@mouseenter="showQr(item)"
 				@mouseleave="hideQr(item)"
@@ -269,10 +270,12 @@ export default {
 			return ["png", "jpg", "gif", "jpeg"].includes(this.ext);
 		},
 		media() {
-			return ["mp3", "mp4", "flv", "mkv"].includes(this.ext);
+			return ["mp3", "mp4", "flv", "mkv", "ts"].includes(this.ext);
 		},
 		tar() {
-			return ["rar", "zip", "xz", "gz","7z","bz2"].includes(this.ext);
+			return ["rar", "zip", "xz", "gz", "7z", "bz2", "tgz"].includes(
+				this.ext
+			);
 		},
 		doc() {
 			return [
@@ -285,7 +288,10 @@ export default {
 				"xlsx",
 				"php",
 				"css",
-				"js"
+				"js",
+				"html",
+				"json",
+				"ts"
 			].includes(this.ext);
 		}
 	},
