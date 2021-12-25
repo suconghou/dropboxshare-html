@@ -53,7 +53,7 @@
 	white-space: nowrap;
 }
 .file-item .date {
-	width: 15%;
+	width: 20%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -215,7 +215,7 @@
 		</template>
 		<div class="name">{{item.name}}</div>
 		<div class="size" v-show="!item.isdir">{{item.size | format}}</div>
-		<div class="date" v-show="!item.isdir">{{item.mtime | date}}</div>
+		<div class="date" v-show="!item.isdir">{{item.modified }}</div>
 		<div class="ctrl" v-if="!item.isdir">
 			<div class="qrcodeimg" :name="item.name" v-show="qrshow.path==item.path"></div>
 			<div
@@ -307,11 +307,13 @@ export default {
 	},
 	methods: {
 		copy(item) {
+			item.path = item.path.replace('disk:','/stream')
 			const url = location.origin + item.path;
 			copyText(url);
 			this.$parent.toast("复制完成");
 		},
 		showQr(item) {
+			item.path = item.path.replace('disk:','/stream')
 			this.qrshow = item;
 			const url = location.origin + item.path;
 			console.info(url);

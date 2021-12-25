@@ -117,11 +117,11 @@
 		<div class="file-lists">
 			<div class="file-item header">
 				<div class="typeicon"></div>
-				<div class="name">文件 ({{totalSizeHuman}} 共{{list.total}}个)</div>
+				<div class="name">文件 ({{totalSizeHuman}} 共{{list.items.length}}个)</div>
 				<div class="size">大小</div>
 				<div class="date">修改时间</div>
 			</div>
-			<file-item v-for="item in list.list" :key="item.path" :item="item" @click.native="goto(item)" />
+			<file-item v-for="item in list.items" :key="item.path" :item="item" @click.native="goto(item)" />
 		</div>
 	</div>
 </template>
@@ -137,7 +137,7 @@ export default {
 		return {
 			loading: true,
 			list: {
-				list: [],
+				items: [],
 				total: 0
 			},
 			path: ""
@@ -150,7 +150,7 @@ export default {
 	computed: {
 		totalSize() {
 			let s = 0;
-			for (let item of this.list.list) {
+			for (let item of this.list.items) {
 				s += item.size;
 			}
 			return s;
