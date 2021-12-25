@@ -213,7 +213,7 @@ export default {
 				const path = item.path.substr(6);
 				location.hash = `#${path}`;
 			} else {
-				window.open(item.path);
+				window.open(item.path.replace('disk:','/stream'));
 			}
 		},
 		navto(path) {
