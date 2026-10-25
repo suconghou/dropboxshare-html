@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分享</title>
+
+  <script src="https://cdn.ourwill.cn/fed-static/assets/libs/vue.global-3.2.31.min.js"></script>
+  <script src="https://cdn.ourwill.cn/fed-static/assets/libs/tailwindcss/tailwindcss-3.4.16.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"
+    onerror="console.warn('qrcode 库加载失败，二维码预览不可用')"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          keyframes: {
+            load: {
+              '0%': { opacity: '1' },
+              '100%': { opacity: '0', transform: 'rotate(90deg)' },
+            },
+          },
+          animation: {
+            load: 'load 1s ease infinite',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    @media (max-width: 800px) {
+      .wrapper {
+        width: 99%;
+      }
+    }
+
+    @media (min-width: 800px) {
+      .file-item:hover .ctrl {
+        display: block;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div class="wrapper w-[90%] mx-auto my-5">
+      <div v-if="loading" class="fixed inset-0 flex items-center">
+        <div class="w-[150px] h-[15px] mx-auto">
+          <span v-for="(d, i) in ['0.13s', '0.26s', '0.39s', '0.52s', '0.65s']" :key="i"
+            class="inline-block w-[15px] h-full bg-[lightgreen] animate-load origin-bottom-right"
+            :class="i === 4 ? 'mr-0' : 'mr-[5px]'" :style="{ animationDelay: d }"></span>
+        </div>
+      </div>
+      <toast ref="toastRef"></toast>
+      <div class="nav-bar">
+        <ul class="nav m-0 p-[5px_0_10px] h-[30px] text-[rgb(77,164,230)]">
+          <li v-for="(nav, i) in navs" :key="i" class="inline-block cursor-pointer" @click="navto(nav.target)">
+            {{ nav.name }}<span v-if="i < navs.length - 1" class="mx-[6px] text-[#aaa]">›</span>
+          </li>
+        </ul>
+      </div>
+      <div class="file-lists">
+        <div class="header flex items-center h-10 leading-10 bg-[rgb(245,249,252)] border-t border-[#d5e7f3]">
+          <div class="w-[55px] shrink-0"></div>
+          <div class="name w-[55%]">文件 ({{ totalSizeHuman }} 共{{ list.total }}个)</div>
+          <div class="size w-[10%]">大小</div>
+          <div class="date w-[15%]">修改时间</div>
+        </div>
+        <file-item v-for="item in list.list" :key="item.path" :item="item" @click="goto(item)"
+          @copied="showToast('复制完成')"></file-item>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, onBeforeUnmount } = Vue;
+
+    // --- Utils (与原 src/utils/util.ts 一致) ---
+    const byteFormat = (size) => {
+      if (!size || size <= 0) {
+        return '0 B';
+      }
+      const name = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+      let pos = 0;
+      while (size >= 1024) {
+        size /= 1024;
+        pos++;
+      }
+      return size.toFixed(2) + ' ' + name[pos];
+    };
+
+    const dateFormat = (date, fmt = 'YYYY-MM-DD HH:mm:ss') => {
+      if (!date) {
+        return '';
+      }
+      if (typeof date === 'string') {
+        date = new Date(date.replace(/-/g, '/'));
+      }
+      if (typeof date === 'number') {
+        date = new Date(date);
+      }
+      const o = {
+        'M+': date.getMonth() + 1,
+        'D+': date.getDate(),
+        'h+': date.getHours() % 12 === 0 ? 12 : date.getHours() % 12,
+        'H+': date.getHours(),
+        'm+': date.getMinutes(),
+        's+': date.getSeconds(),
+        'q+': Math.floor((date.getMonth() + 3) / 3),
+        'S': date.getMilliseconds(),
+      };
+      const week = { '0': '日', '1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六' };
+      if (/(Y+)/.test(fmt)) {
+        fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
+      }
+      if (/(E+)/.test(fmt)) {
+        fmt = fmt.replace(RegExp.$1,
+          (RegExp.$1.length > 1 ? (RegExp.$1.length > 2 ? '星期' : '周') : '') + week[date.getDay() + '']);
+      }
+      for (const k in o) {
+        if (new RegExp('(' + k + ')').test(fmt)) {
+          fmt = fmt.replace(RegExp.$1, RegExp.$1.length === 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length));
+        }
+      }
+      return fmt;
+    };
+
+    const copyText = (text) => {
+      const dom = document.createElement('input');
+      dom.value = text;
+      // 不能设置宽高为0或者display:none,此方案已测试Chrome,Safari,Firefox有效
+      dom.style.left = '-999px';
+      dom.style.top = '-999px';
+      dom.style.opacity = '0';
+      dom.style.position = 'fixed';
+      document.body.appendChild(dom);
+      dom.select();
+      document.execCommand('Copy');
+      setTimeout(() => {
+        document.body.removeChild(dom);
+      }, 200);
+    };
+
+    // --- API (与原 src/api/request.ts 一致) ---
+    const getList = async (path) => {
+      const res = await fetch('/files' + path);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return res.json();
+    };
+
+    // --- Toast 组件 ---
+    const Toast = {
+      setup() {
+        const type = ref('success');
+        const text = ref('');
+        let timer;
+
+        const show = (t, msg) => {
+          type.value = t;
+          text.value = msg;
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            text.value = '';
+          }, 2000);
+        };
+
+        onBeforeUnmount(() => clearTimeout(timer));
+
+        return {
+          type, text,
+          success: (msg) => show('success', msg),
+          error: (msg) => show('error', msg),
+        };
+      },
+      template: `
+        <div v-show="text"
+          class="toast fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[100px] h-[30px] leading-[30px] px-2.5 border text-center"
+          :class="type === 'success'
+            ? 'text-[#33c15d] border-[#33c15d] bg-[#ebfaef]'
+            : 'text-[#f4282d] border-[#f4282d] bg-[#f8ecec]'"
+          v-text="text"></div>
+      `,
+    };
+
+    // --- FileItem 组件 ---
+    const ICONS = {
+      dir: `<svg t="1574941112104" class="icon w-[30px] h-[30px]" viewBox="0 0 1194 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2627"><path d="M1145.560315 245.47721H0V81.825737a81.825737 81.825737 0 0 1 81.825737-81.825737h286.390078l163.651474 163.651474H1063.734578a81.825737 81.825737 0 0 1 81.825737 81.825736z" p-id="2628"/><path d="M0 327.302947m81.825737 0l981.908841 0q81.825737 0 81.825737 81.825737l0 490.95442q0 81.825737-81.825737 81.825737l-981.908841 0q-81.825737 0-81.825737-81.825737l0-490.95442q0-81.825737 81.825737-81.825737Z" p-id="2629"/></svg>`,
+      image: `<svg t="1574941260911" class="icon w-[30px] h-[30px]" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3418"><path d="M0 85.344v853.344h1024V85.344H0z m938.656 85.312v452.256l-128-128L640 665.568l-298.656-298.656-256 256V170.656h853.344zM85.344 853.344V742.4l256-256L640 785.056l170.656-170.656 128 128v110.944H85.312z" p-id="3419"/><path d="M853.344 341.344a85.344 85.344 0 1 1-170.688 0 85.344 85.344 0 0 1 170.688 0z" p-id="3420"/></svg>`,
+      tar: `<svg t="1574941527122" class="icon w-[30px] h-[30px]" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="6113"><path d="M640 42.7H512V128h85.3v85.3H512v85.3h85.3V384H512v85.3h85.3v85.3H512v-85.3h-85.3V384H512v-85.3h-85.3v-85.3H512V128h-85.3V42.7h-256c-23.6 0-42.7 19.1-42.7 42.7v853.3c0 23.6 19.1 42.7 42.7 42.7h682.7c23.6 0 42.7-19.1 42.7-42.7v-640C796 198.7 740 142.6 640 42.7zM597.3 896H426.7V597.3h170.7V896zM640 298.7V128l170.7 170.7H640z" p-id="6114"/></svg>`,
+      doc: `<svg t="1574941280914" class="icon w-[30px] h-[30px]" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4224"><path d="M537.152 414.72h-288.64a29.44 29.44 0 0 1-26.24-30.72 29.44 29.44 0 0 1 26.24-32h288.64a29.44 29.44 0 0 1 26.24 32 29.44 29.44 0 0 1-26.24 30.72z m209.92 165.76h-498.56a32.64 32.64 0 0 1 0-64h498.56a32.64 32.64 0 0 1 0 64z m0 165.76h-498.56a32.64 32.64 0 0 1 0-64h498.56a32.64 32.64 0 0 1 0 64z" fill="#333333" p-id="4225"/><path d="M192.832 0a128 128 0 0 0-128 128v768a128 128 0 0 0 128 128h640a128 128 0 0 0 128-128l7.04-670.72L748.992 0h-556.16z m512 64l192 192h-160.64a31.36 31.36 0 0 1-31.36-31.36V64z m128 896h-640a64 64 0 0 1-64-64V128a64 64 0 0 1 64-64h448v192a64 64 0 0 0 64 64h192v576a64 64 0 0 1-64 64z" fill="#333333" p-id="4226"/></svg>`,
+      media: `<svg t="1574941302252" class="icon w-[30px] h-[30px]" viewBox="0 0 1073 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4966"><path d="M881.784845 0H191.570683A191.697888 191.697888 0 0 0 0 191.570683v640.858634A191.697888 191.697888 0 0 0 191.570683 1024h690.214162a191.825093 191.825093 0 0 0 191.570683-191.570683V191.570683A191.825093 191.825093 0 0 0 881.784845 0z m24.677764 333.785839h79.503105V394.335404h-79.503105a43.631304 43.631304 0 1 0 0 87.262608h79.503105v60.549566h-79.503105a43.758509 43.758509 0 0 0 0 87.389813h79.503105v60.549566h-79.503105a43.631304 43.631304 0 1 0 0 87.262608h79.503105v54.952547a104.308075 104.308075 0 0 1-104.180869 104.308074H191.570683a104.43528 104.43528 0 0 1-104.308074-104.308074v-54.825342h79.63031a43.631304 43.631304 0 1 0 0-87.262609H87.262609V629.664596h79.63031a43.758509 43.758509 0 0 0 0-87.389813H87.262609v-60.549566h79.63031a43.631304 43.631304 0 1 0 0-87.262608H87.262609v-60.67677h79.63031a43.631304 43.631304 0 1 0 0-87.262609H87.262609v-54.952547a104.43528 104.43528 0 0 1 104.308074-104.308074h690.214162a104.308075 104.308075 0 0 1 104.180869 104.308074v54.952547h-79.503105a43.631304 43.631304 0 1 0 0 87.262609z" fill="#4D4D4D" p-id="4967"/><path d="M718.199255 437.076273l-233.929938-152.645962a75.559752 75.559752 0 0 0-78.103851-4.579379 88.280248 88.280248 0 0 0-43.631305 78.994285v305.291926a89.043478 89.043478 0 0 0 44.52174 79.63031 73.524472 73.524472 0 0 0 35.617391 9.158758 78.994286 78.994286 0 0 0 42.995279-12.720497l231.894659-152.645962a89.933913 89.933913 0 0 0 40.19677-76.322982 87.008199 87.008199 0 0 0-39.560745-74.160497z m-48.337889 73.906087a7.250683 7.250683 0 0 1 0 2.925715l-220.064596 144.504844v-292.571428l219.937391 143.86882a3.180124 3.180124 0 0 1 0.127205 1.272049z" fill="#4D4D4D" p-id="4968"/></svg>`,
+      file: `<svg t="1574941328714" class="icon w-[30px] h-[30px]" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790"><path d="M645.12 0H194.56C112.64 0 51.2 66.56 51.2 143.36v737.28C51.2 957.44 112.64 1024 194.56 1024h634.88c76.8 0 143.36-66.56 143.36-143.36V332.8L645.12 0z m20.48 168.96L803.84 307.2H665.6V168.96z m204.8 711.68c0 20.48-15.36 40.96-40.96 40.96H194.56c-25.6 0-40.96-20.48-40.96-40.96V143.36c0-20.48 15.36-40.96 40.96-40.96H563.2v215.04c0 51.2 40.96 92.16 92.16 92.16H870.4v471.04z" p-id="5791"/></svg>`,
+      qrcode: `<svg t="1574991047098" class="icon w-[30px] h-[30px] mt-2.5 fill-[#aaa]" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1890"><path d="M682.666667 725.333333v-42.666666h-128v-128h128v85.333333h85.333333v85.333333h-42.666667v85.333334h-85.333333v85.333333h-85.333333v-128h85.333333v-42.666667h42.666667z m213.333333 170.666667h-170.666667v-85.333333h85.333334v-85.333334h85.333333v170.666667zM128 128h341.333333v341.333333H128V128z m85.333333 85.333333v170.666667h170.666667V213.333333H213.333333z m341.333334-85.333333h341.333333v341.333333h-341.333333V128z m85.333333 85.333333v170.666667h170.666667V213.333333h-170.666667zM128 554.666667h341.333333v341.333333H128v-341.333333z m85.333333 85.333333v170.666667h170.666667v-170.666667H213.333333z m554.666667-85.333333h128v85.333333h-128v-85.333333zM256 256h85.333333v85.333333H256V256z m0 426.666667h85.333333v85.333333H256v-85.333333zM682.666667 256h85.333333v85.333333h-85.333333V256z" p-id="1891"/></svg>`,
+    };
+
+    const FileItem = {
+      props: { item: { type: Object, required: true } },
+      emits: ['click', 'copied'],
+      setup(props, { emit }) {
+        const qrPath = ref('');
+
+        const ext = computed(() => props.item.name.split('.').pop().toLowerCase());
+        const image = computed(() => ['png', 'jpg', 'gif', 'jpeg'].includes(ext.value));
+        const media = computed(() => ['mp3', 'mp4', 'flv', 'mkv', 'ts'].includes(ext.value));
+        const tar = computed(() => ['rar', 'zip', 'xz', 'gz', '7z', 'bz2', 'tgz'].includes(ext.value));
+        const doc = computed(() =>
+          ['doc', 'pdf', 'ppt', 'xls', 'docx', 'pptx', 'xlsx', 'php', 'css', 'js', 'html', 'json', 'ts'].includes(ext.value));
+
+        const icon = computed(() => {
+          if (props.item.isdir) return 'dir';
+          if (image.value) return 'image';
+          if (tar.value) return 'tar';
+          if (doc.value) return 'doc';
+          if (media.value) return 'media';
+          return 'file';
+        });
+
+        const format = (s) => byteFormat(s);
+        const date = (s) => (s > 0 ? dateFormat(s * 1e3, 'YYYY/MM/DD HH:mm:ss') : '');
+
+        const copy = (item) => {
+          copyText(location.origin + item.path);
+          emit('copied');
+        };
+
+        const showQr = (item) => {
+          qrPath.value = item.path;
+          if (typeof QRCode === 'undefined') return;
+          const img = document.querySelector(`.qrcodeimg[data-path="${CSS.escape(item.path)}"] img`);
+          if (!img) return;
+          QRCode.toDataURL(location.origin + item.path, { width: 100, margin: 1, errorCorrectionLevel: 'L' })
+            .then((dataUrl) => {
+              if (qrPath.value === item.path) img.src = dataUrl;
+            })
+            .catch((err) => console.error(err));
+        };
+
+        const hideQr = () => {
+          qrPath.value = '';
+        };
+
+        return { qrPath, icon, format, date, copy, showQr, hideQr };
+      },
+      template: `
+        <div
+          class="file-item flex items-center h-[50px] leading-[50px] text-base cursor-pointer text-[#666] border-b border-[#d5e7f3] hover:bg-[rgb(245,249,252)]"
+          @click="$emit('click')">
+          <div class="w-[55px] shrink-0 flex items-center justify-center" v-html="icons[icon]"></div>
+          <div class="name w-[55%] truncate">{{ item.name }}</div>
+          <div v-show="!item.isdir" class="size w-[10%] truncate">{{ format(item.size) }}</div>
+          <div v-show="!item.isdir" class="date w-[15%] truncate">{{ date(item.mtime) }}</div>
+          <div v-if="!item.isdir" class="ctrl relative ml-auto w-[70px] text-sm hidden">
+            <div
+              class="qrcodeimg absolute left-[-37px] top-[-100px] w-[100px] h-[100px] bg-white shadow-[0_0_5px_rgba(100,100,100,0.5)] z-[99]"
+              :data-path="item.path" v-show="qrPath == item.path">
+              <img class="w-full h-full" alt="" />
+            </div>
+            <div class="qrcode cursor-pointer hover:[&_.icon]:fill-[#222]" title="点击复制地址"
+              @click.stop="copy(item)" @mouseenter="showQr(item)" @mouseleave="hideQr" v-html="icons.qrcode"></div>
+          </div>
+        </div>
+      `,
+      data() {
+        return { icons: ICONS };
+      },
+    };
+
+    // --- 主应用 ---
+    const app = createApp({
+      components: { Toast, FileItem },
+      setup() {
+        const loading = ref(true);
+        const list = ref({ list: [], total: 0 });
+        const currentPath = ref('');
+        const toastRef = ref(null);
+
+        const showToast = (text) => toastRef.value?.success(text);
+
+        const totalSize = computed(() => list.value.list.reduce((s, item) => s + item.size, 0));
+        const totalSizeHuman = computed(() => byteFormat(totalSize.value));
+
+        const navs = computed(() => {
+          if (currentPath.value === '/' || !currentPath.value) {
+            return [{ name: '所有文件', target: '/' }];
+          }
+          const arr = [];
+          const targets = [];
+          currentPath.value.split('/').forEach((item) => {
+            const name = item === '/' || !item ? '所有文件' : item;
+            targets.push(item);
+            let target = targets.join('/');
+            if (target === '') {
+              target = '/';
+            }
+            arr.push({ name, target });
+          });
+          return arr;
+        });
+
+        const hashChange = () => {
+          load(location.hash.substring(1));
+        };
+
+        const load = async (path) => {
+          try {
+            loading.value = true;
+            list.value = await getList(path);
+            currentPath.value = path;
+            loading.value = false;
+          } catch (e) {
+            loading.value = false;
+            toastRef.value?.error(e.message);
+          }
+        };
+
+        const goto = (item) => {
+          if (item.isdir) {
+            location.hash = '#' + item.path.substring(6);
+          } else {
+            window.open(item.path);
+          }
+        };
+
+        const navto = (path) => {
+          location.hash = '#' + path;
+        };
+
+        onMounted(() => {
+          window.addEventListener('hashchange', hashChange, false);
+          if (!location.hash) {
+            location.hash = '#/';
+          } else {
+            hashChange();
+          }
+        });
+
+        onBeforeUnmount(() => {
+          window.removeEventListener('hashchange', hashChange, false);
+        });
+
+        return { loading, list, toastRef, totalSizeHuman, navs, goto, navto, showToast };
+      },
+    });
+
+    app.mount('#app');
+  </script>
+</body>
+
+</html>
